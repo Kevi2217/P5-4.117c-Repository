@@ -24,28 +24,20 @@ source("renset_data.R")
 test_data <- homedata %>%
   dplyr::group_by(kommunenavn) %>%
   dplyr::sample_n(size = (n() / 10), replace = FALSE) %>%
-  dplyr::ungroup()
+  dplyr::group_split()
+
 
 # Fjerner test_data fra homedata og laver training_data 
 training_data <- homedata %>%
-  dplyr::anti_join(test_data)
+  dplyr::anti_join(bind_rows(test_data)) %>%
+  dplyr::group_by(kommunenavn) %>%
+  dplyr::group_split()
 
-######################################################### ALT ANALYSE HERUNDER #####################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+######################################### ALT ANALYSE HERUNDER ###########################################
+# test data og training_data er inddelt i en liste med længde 3.
+# 1 er Aalborg,
+# 2 er Aarhus,
+# 3 er København.
 
 
 
