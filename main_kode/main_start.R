@@ -45,15 +45,3 @@ training_data <- lapply(training_data, function(df) df[, !names(df) %in% "kommun
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
