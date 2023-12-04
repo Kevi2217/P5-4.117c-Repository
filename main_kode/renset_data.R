@@ -2,16 +2,16 @@
 colnames(homedata) <- tolower(colnames(homedata))
 
 homedata <- homedata %>%
-  rename("periode_salg" = "dwid_periode_salg") %>%
+  dplyr::rename("periode_salg" = "dwid_periode_salg") %>%
   dplyr::filter(sagsstatus != "Under salg") %>%
   # Fjerner meget ukomplette/ligegyldige søjler
   dplyr::select(-ejd_antaltoiletter, -pris_foersteudbud, -dato_aktueludbudpris, -ejd_ombygningsaar,
                 -areal_bolig_commercial, -ejd_antalsovevaerelser, -dwid_periode_formid, -dwid_periode_annoncering,
                 -dwid_periode_oprettet, -nk_sagid, -sagstype, -sagsstatus,
                 -dato_annoncering, -kvhx, -adresse_postnr, -row_id,
-                -salgstid, -hoejhus, -dwid_projektsalg, -beloeb_udbetaling,
+                -dwid_projektsalg, -beloeb_udbetaling,
                 -beloeb_mdnetto, -beloeb_mdbrutto, -pris_aktueludbud, -antalstatusmoedersaelger,
-                -afstemningsomraade, -pris_ejdvurdering) %>%
+                -afstemningsomraade, -pris_ejdvurdering, -salgsmaaned) %>%
   # Beholder ejerlejligheder
   dplyr::filter(ejdtype == "Ejerlejlighed") %>%
   # Renser etage-søjlen så den kun er numerisk
@@ -22,18 +22,19 @@ homedata <- homedata %>%
                                        ifelse(adresse_etage == "kld.", -1,
                                        ifelse(adresse_etage == "kl", -1, adresse_etage
                                        ))))))) %>%
+  dplyr::mutate(adresse_etage = is.numeric(adresse_etage)) %>%
   # Renser etage-søjlen videre for NA'er hvis etagen står i adresse-søjlen
   dplyr::mutate(adresse_etage = ifelse(rowSums(sapply(c("st\\.", "ST", "st"), grepl, adresse_fuld)) > 0, 0,
-                                       ifelse(rowSums(sapply(c("11\\.", "011\\."), grepl, adresse_fuld)) > 0, 11,
-                                       ifelse(rowSums(sapply(c("1\\.", "01\\."), grepl, adresse_fuld)) > 0, 1,
-                                       ifelse(rowSums(sapply(c("2\\.", "02\\."), grepl, adresse_fuld)) > 0, 2,
-                                       ifelse(rowSums(sapply(c("3\\.", "03\\."), grepl, adresse_fuld)) > 0, 3,
-                                       ifelse(rowSums(sapply(c("4\\.", "04\\."), grepl, adresse_fuld)) > 0, 4,
-                                       ifelse(rowSums(sapply(c("5\\.", "05\\."), grepl, adresse_fuld)) > 0, 5,
-                                       ifelse(rowSums(sapply(c("6\\.", "06\\."), grepl, adresse_fuld)) > 0, 6,
-                                       ifelse(rowSums(sapply(c("7\\.", "07\\."), grepl, adresse_fuld)) > 0, 7,
-                                       ifelse(rowSums(sapply(c("8\\.", "08\\."), grepl, adresse_fuld)) > 0, 8, adresse_etage
-                                       ))))))))))) %>%
+                                ifelse(rowSums(sapply(c("11\\.", "011\\.", "\\ss11\\s"), grepl, adresse_fuld)) > 0, 11,
+                                ifelse(rowSums(sapply(c("1\\.", "01\\.", "\\s1\\s", "\\s01\\s"), grepl, adresse_fuld)) > 0, 1,
+                                ifelse(rowSums(sapply(c("2\\.", "02\\.", "\\s2\\s", "\\s02\\s"), grepl, adresse_fuld)) > 0, 2,
+                                ifelse(rowSums(sapply(c("3\\.", "03\\.", "\\s3\\s", "\\s03\\s"), grepl, adresse_fuld)) > 0, 3,
+                                ifelse(rowSums(sapply(c("4\\.", "04\\.", "\\s4\\s", "\\s04\\s"), grepl, adresse_fuld)) > 0, 4,
+                                ifelse(rowSums(sapply(c("5\\.", "05\\.", "\\s5\\s", "\\s05\\s"), grepl, adresse_fuld)) > 0, 5,
+                                ifelse(rowSums(sapply(c("6\\.", "06\\.", "\\s6\\s", "\\s06\\s"), grepl, adresse_fuld)) > 0, 6,
+                                ifelse(rowSums(sapply(c("7\\.", "07\\.", "\\s7\\s", "\\s07\\s"), grepl, adresse_fuld)) > 0, 7,
+                                ifelse(rowSums(sapply(c("8\\.", "08\\.", "\\s8\\s", "\\s08\\s"), grepl, adresse_fuld)) > 0, 8,
+                                       adresse_etage))))))))))) %>%
   mutate(ejd_energimaerke = ifelse(grepl("^A", ejd_energimaerke), "A", 
                                    ifelse(ejd_energimaerke == "Unknown", NA, ejd_energimaerke))) %>%
   # Renser storgrund-søjlen for NA. HOME's definition af storgrund er 1500m^2< 
@@ -59,5 +60,9 @@ homedata <- homedata %>%
                 -bynavn, -sogn, -corona,
                 -periode_salg, -ejd_opfoerelsesaar) %>%
   na.omit()
+
+
+
+## NOTER ########
 
 
