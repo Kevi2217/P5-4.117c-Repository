@@ -1,18 +1,17 @@
-library("dplyr")
-library("tidyr")
-library("lubridate")
-library("openxlsx")
-library("ggplot2")
-library("leaflet")
-library("ggmap")
-library("mapview")
-library("sp")
-library("mapdeck")
-library("RColorBrewer")
-library("ggcorrplot")
-library("MASS")
-library("stringr")
-
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(openxlsx)
+library(ggplot2)
+library(leaflet)
+library(ggmap)
+library(mapview)
+library(sp)
+library(mapdeck)
+library(RColorBrewer)
+library(ggcorrplot)
+library(MASS)
+library(stringr)
 # Definere generelle variable
 set.seed(69)
 
@@ -60,6 +59,16 @@ training_data <- lapply(training_data, function(df) {
   df$sag_annonceretnettet <- relevel(df$sag_annonceretnettet, ref = "Ja")
   return(df)
 })
+# Sætter Aalborg bynavn der refferes til
+training_data[[1]]$bynavn <- as.factor(training_data[[1]]$bynavn)
+training_data[[1]]$bynavn <- relevel(training_data[[1]]$bynavn, ref = "Aalborg")
+# Sætter Aarhus bynavn der refferes til
+training_data[[2]]$bynavn <- as.factor(training_data[[2]]$bynavn)
+training_data[[2]]$bynavn <- relevel(training_data[[2]]$bynavn, ref = "Aarhus C")
+# Sætter Aarhus bynavn der refferes til
+training_data[[3]]$bynavn <- as.factor(training_data[[3]]$bynavn)
+training_data[[3]]$bynavn <- relevel(training_data[[3]]$bynavn, ref = "København Ø")
+
 
 # Bruger lm() til at lave en model som kigger på pris_salg og alle explanatory variables
 model_aal_1 <- lm(pris_salg ~ ., data = training_data[[1]])
@@ -95,73 +104,235 @@ model_kbh_1s <- stepAIC(model_kbh_1,
 names(coef(model_kbh_1s))
 
 
-# COR MATRIX
-# Fjerner kategoriske søjler så correlation matrix kan laves med udelukkende numeriske søjler
-numerisk_data <- lapply(training_data, function(df) {
-  df %>%
-    as.data.frame() %>%
-    dplyr::select(-sag_annonceretnettet, -ejd_altan,
-                  -ejd_energimaerke, -hoejhus) %>%
-    mutate_all(as.numeric)
-})
-
+###### NUMERISK VÆRDIER TIL MODEL 2 #########
 # Vi kigger på correlation matrix for de numeriske værdier
 # NOTE: Vi fjerne alle høj correlation explanatory variables, og dem som har correlation på under
-# 0.15 til pris_salg.
-# Værdier vi vil fjerne for nedestående: ejd_antalrum, salgstid, areal_grund, ejd_antalplan
+# 0.1 til pris_salg.
+
+### AAL
 ggcorrplot(round(cor(cbind(pris_salg = training_data[[1]]$pris_salg,
+                     beloeb_ejerudgift = training_data[[1]]$beloeb_ejerudgift,
+                     antalfremvisninger = training_data[[1]]$antalfremvisninger,
                      areal_bolig = training_data[[1]]$areal_bolig,
-                     areal_grund = training_data[[1]]$areal_grund,
                      ejd_antalplan = training_data[[1]]$ejd_antalplan,
-                     ejd_antalrum = training_data[[1]]$ejd_antalrum,
-                     salgstid = training_data[[1]]$salgstid,
+                     ejd_ombygningsaar = training_data[[1]]$ejd_ombygningsaar,
                      dist_skole = training_data[[1]]$dist_skole,
-                     alder = training_data[[1]]$alder,
                      dist_raadhus = training_data[[1]]$dist_raadhus)), 2),
            hc.order = TRUE, type = "lower", lab = TRUE)
+# Værdier vi vil fjerne: beloeb_ejerudgift.
 
-# Værdier vi vil fjerne for nedestående: ejd_antalrum, salgstid, antal_fremvisninger
+###
+### AAR
 ggcorrplot(round(cor(cbind(pris_salg = training_data[[2]]$pris_salg,
                            beloeb_ejerudgift = training_data[[2]]$beloeb_ejerudgift,
-                           antalfremvisninger = training_data[[2]]$antalfremvisninger,
                            areal_bolig = training_data[[2]]$areal_bolig,
                            ejd_antalplan = training_data[[2]]$ejd_antalplan,
-                           ejd_antalrum = training_data[[2]]$ejd_antalrum,
-                           salgstid = training_data[[2]]$salgstid,
-                           alder = training_data[[2]]$alder,
+                           ejd_opfoerelsesaar = training_data[[2]]$ejd_opfoerelsesaar,
+                           dist_skole = training_data[[2]]$dist_skole,
                            dist_raadhus = training_data[[2]]$dist_raadhus)), 2),
            hc.order = TRUE, type = "lower", lab = TRUE)
+# Værdier vi vil fjerne: beloeb_ejerudgift, ejd_opfoerelsesaar, dist_skole.
+# Vi kigger på plots af disse for at se om correlation giver mening eller ej.
+par(mfrow = c(1, 3))
 
-# Værdier vi vil fjerne for nedestående: ejd_antalrum, areal_kaelder, ejd_antalplan, dist_raadhus
+plot(training_data[[2]]$beloeb_ejerudgift,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Cost of Ownership",
+     xlab = "Cost of Ownership",
+     ylab = "Price (in millions)")
+
+plot(training_data[[2]]$ejd_opfoerelsesaar,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Year of Construction",
+     xlab = "Year of Construction",
+     ylab = "Price (in millions)")
+
+plot(training_data[[2]]$dist_skole,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs School",
+     xlab = "Distance to Nearest School",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+
+# Fjerner outliers og plotter igen
+
+training_data[[2]] <- training_data[[2]] %>%
+  #beloeb_ejerudgift
+  dplyr::filter(beloeb_ejerudgift < 500000) %>%
+  #ejd_opfoerelsesaar
+  dplyr::filter(ejd_opfoerelsesaar > 1800) %>%
+  #dist_skole
+  dplyr::filter(dist_skole < 2)
+
+par(mfrow = c(1, 3))
+plot(training_data[[2]]$beloeb_ejerudgift,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Cost of Ownership",
+     xlab = "Cost of Ownership",
+     ylab = "Price (in millions)")
+
+plot(training_data[[2]]$ejd_opfoerelsesaar,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Year of Construction",
+     xlab = "Year of Construction",
+     ylab = "Price (in millions)")
+
+plot(training_data[[2]]$dist_skole,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs School",
+     xlab = "Distance to Nearest School",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+
+# Laver correlation-matrix uden outliers
+ggcorrplot(round(cor(cbind(pris_salg = training_data[[2]]$pris_salg,
+                           beloeb_ejerudgift = training_data[[2]]$beloeb_ejerudgift,
+                           areal_bolig = training_data[[2]]$areal_bolig,
+                           ejd_antalplan = training_data[[2]]$ejd_antalplan,
+                           ejd_opfoerelsesaar = training_data[[2]]$ejd_opfoerelsesaar,
+                           dist_skole = training_data[[2]]$dist_skole,
+                           dist_raadhus = training_data[[2]]$dist_raadhus)), 2),
+           hc.order = TRUE, type = "lower", lab = TRUE)
+### KBH
 ggcorrplot(round(cor(cbind(pris_salg = training_data[[3]]$pris_salg,
-                           antalfremvisninger = training_data[[3]]$antalfremvisninger,
+                           beloeb_ejerudgift = training_data[[3]]$beloeb_ejerudgift,
                            adresse_etage = training_data[[3]]$adresse_etage,
                            areal_bolig = training_data[[3]]$areal_bolig,
-                           areal_grund = training_data[[3]]$areal_grund,
-                           areal_kaelder = training_data[[3]]$areal_kaelder,
-                           ejd_antalplan = training_data[[3]]$ejd_antalplan,
                            ejd_antalrum = training_data[[3]]$ejd_antalrum,
-                           alder = training_data[[3]]$alder,
+                           ejd_opfoerelsesaar = training_data[[3]]$ejd_opfoerelsesaar,
                            dist_raadhus = training_data[[3]]$dist_raadhus)), 2),
            hc.order = TRUE, type = "lower", lab = TRUE)
+# Værdier vi vil fjerne: ejd_antalrum, beloeb_ejerudgift, dist_raadhus.
+# Vi kigger på plots af disse for at se om correlation giver mening eller ej.
 
+plot(training_data[[3]]$dist_raadhus,
+     training_data[[3]]$pris_salg / 1000000,
+     main = "Price vs Townhall",
+     xlab = "Distance to Nearest Townhall",
+     ylab = "Price (in millions)")
+###
+
+
+################## KATEGORISKE VÆRDIER TIL MODEL 2 ######################
+# AAL (bynanv, energimaerke)
+# Fjerner "F" i ejd_energimaerke
+par(mfrow = c(1, 2))
+
+plot(training_data[[1]]$bynavn,
+     training_data[[1]]$pris_salg / 1000000,
+     main = "Price vs Town",
+     ylab = "Price (in millions)",
+     xlab = "",
+     las = 2,
+     cex.axis = 0.7)
+
+plot(training_data[[1]]$ejd_energimaerke,
+     training_data[[1]]$pris_salg / 1000000,
+     main = "Price vs Energy Label",
+     xlab = "Energy label",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+
+training_data[[1]] <- training_data[[1]] %>%
+  dplyr::filter(ejd_energimaerke != "F")
+
+training_data[[1]]$ejd_energimaerke <- droplevels(training_data[[1]]$ejd_energimaerke)
+
+par(mfrow = c(1, 2))
+
+plot(training_data[[1]]$bynavn,
+     training_data[[1]]$pris_salg / 1000000,
+     main = "Price vs Town",
+     ylab = "Price (in millions)",
+     xlab = "",
+     las = 2,
+     cex.axis = 0.7)
+
+plot(training_data[[1]]$ejd_energimaerke,
+     training_data[[1]]$pris_salg / 1000000,
+     main = "Price vs Energy Label",
+     xlab = "Energy label",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+# AAR (bynavn, energimaerke, ejd_altan)
+# Fjerner ejd_altan
+par(mfrow = c(1, 3))
+
+plot(training_data[[2]]$bynavn,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Town",
+     ylab = "Price (in millions)",
+     xlab = "",
+     las = 2,
+     cex.axis = 0.7)
+
+plot(training_data[[2]]$ejd_energimaerke,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Energy Label",
+     xlab = "Energy label",
+     ylab = "Price (in millions)")
+
+plot(training_data[[2]]$ejd_altan,
+     training_data[[2]]$pris_salg / 1000000,
+     main = "Price vs Balcony",
+     xlab = "Balcony",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+
+# KBH (bynavn, energimaerke, ejd_altan)
+# Fjerner ejd_altan
+par(mfrow = c(1, 3))
+
+plot(training_data[[3]]$bynavn,
+     training_data[[3]]$pris_salg / 1000000,
+     main = "Price vs Town",
+     ylab = "Price (in millions)",
+     xlab = "",
+     las = 2,
+     cex.axis = 0.7)
+
+plot(training_data[[3]]$ejd_energimaerke,
+     training_data[[3]]$pris_salg / 1000000,
+     main = "Price vs Energy Label",
+     xlab = "Energy label",
+     ylab = "Price (in millions)")
+
+plot(training_data[[3]]$ejd_altan,
+     training_data[[3]]$pris_salg / 1000000,
+     main = "Price vs Balcony",
+     xlab = "Balcony",
+     ylab = "Price (in millions)")
+
+par(mfrow = c(1, 1))
+###
+
+
+
+
+
+
+########## LAVER MODEL 2 ##########
 # Kigger på model 2 hvor vi ikke har ovenståend fra correlation matrix med, og stadig de kategoriske ting med.
-model_aal_2 <- lm(pris_salg ~ areal_bolig + dist_skole +
-                    alder + dist_raadhus +
-                    ejd_energimaerke + ejd_altan, data = training_data[[1]])
+model_aal_2 <- lm(pris_salg ~ bynavn + antalfremvisninger + areal_bolig +
+                    ejd_antalplan + ejd_energimaerke + ejd_ombygningsaar +
+                    dist_skole + dist_raadhus, data = training_data[[1]])
 summary(model_aal_2)
 # names(coef(model_aal_2))
+plot(model_aal_2)
 
-model_aar_2 <- lm(pris_salg ~ beloeb_ejerudgift + areal_bolig +
-                    ejd_antalplan + alder + dist_raadhus +
-                    ejd_altan, data = training_data[[2]])
+model_aar_2 <- lm(pris_salg ~ bynavn + areal_bolig + ejd_antalplan +
+                    ejd_energimaerke + dist_raadhus, data = training_data[[2]])
 summary(model_aar_2)
 # names(coef(model_aar_2))
 
 
-model_kbh_2 <- lm(pris_salg ~ antalfremvisninger + adresse_etage +
-                    areal_bolig + areal_grund + alder +
-                    ejd_energimaerke + ejd_altan, data = training_data[[3]])
+model_kbh_2 <- lm(pris_salg ~ bynavn + antalfremvisninger + adresse_etage +
+                    areal_bolig + ejd_energimaerke + ejd_opfoerelsesaar, data = training_data[[3]])
 summary(model_kbh_2)
 # names(coef(model_kbh_2))
 
