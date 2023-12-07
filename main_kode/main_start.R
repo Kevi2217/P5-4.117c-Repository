@@ -12,6 +12,7 @@ library(RColorBrewer)
 library(ggcorrplot)
 library(MASS)
 library(stringr)
+
 # Definere generelle variable
 set.seed(69)
 
@@ -321,27 +322,64 @@ par(mfrow = c(1, 1))
 model_aal_2 <- lm(pris_salg ~ bynavn + antalfremvisninger + areal_bolig +
                     ejd_antalplan + ejd_energimaerke + ejd_ombygningsaar +
                     dist_skole + dist_raadhus, data = training_data[[1]])
-summary(model_aal_2)
+# summary(model_aal_2)
 # names(coef(model_aal_2))
-plot(model_aal_2)
 
 model_aar_2 <- lm(pris_salg ~ bynavn + areal_bolig + ejd_antalplan +
                     ejd_energimaerke + dist_raadhus, data = training_data[[2]])
-summary(model_aar_2)
+# summary(model_aar_2)
 # names(coef(model_aar_2))
 
 
 model_kbh_2 <- lm(pris_salg ~ bynavn + antalfremvisninger + adresse_etage +
                     areal_bolig + ejd_energimaerke + ejd_opfoerelsesaar, data = training_data[[3]])
-summary(model_kbh_2)
+# summary(model_kbh_2)
 # names(coef(model_kbh_2))
 
 
+############################ LOG MODEL 2 ####################################
+model_aal_2_log <- lm(log(pris_salg) ~ bynavn + antalfremvisninger + areal_bolig +
+                    ejd_antalplan + ejd_energimaerke + ejd_ombygningsaar +
+                    dist_skole + dist_raadhus, data = training_data[[1]])
+# summary(model_aal_2_log)
+# names(coef(model_aal_2_log))
+
+model_aar_2_log <- lm(log(pris_salg) ~ bynavn + areal_bolig + ejd_antalplan +
+                    ejd_energimaerke + dist_raadhus, data = training_data[[2]])
+# summary(model_aar_2_log)
+# names(coef(model_aar_2_log))
+
+
+model_kbh_2_log <- lm(log(pris_salg) ~ bynavn + antalfremvisninger + adresse_etage +
+                    areal_bolig + ejd_energimaerke + ejd_opfoerelsesaar, data = training_data[[3]])
+# summary(model_kbh_2_log)
+# names(coef(model_kbh_2)_log)
+
+
+par(mfrow = c(2, 3))
+plot(model_aal_2, main = "AAL", which = 1)
+plot(model_aar_2, main = "AAR", which = 1)
+plot(model_kbh_2, main = "CPH", which = 1)
+
+plot(model_aal_2_log, main = "AAL", which = 1)
+plot(model_aar_2_log, main = "AAR", which = 1)
+plot(model_kbh_2_log, main = "CPH", which = 1)
+par(mfrow = c(1, 1))
+
+par(mfrow = c(2, 3))
+plot(model_aal_2, main = "AAL", which = 2)
+plot(model_aar_2, main = "AAR", which = 2)
+plot(model_kbh_2, main = "CPH", which = 2)
+
+plot(model_aal_2_log, main = "AAL", which = 2)
+plot(model_aar_2_log, main = "AAR", which = 2)
+plot(model_kbh_2_log, main = "CPH", which = 2)
+par(mfrow = c(1, 1))
 
 
 
 
-
+# confint(model_aar_2, level = 0.95)
 
 
 

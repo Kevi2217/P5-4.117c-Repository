@@ -15,6 +15,9 @@ homedata <- homedata %>%
                 -areal_grund, -storgrund, -hoejhus, -areal_garagecarport, -alder) %>%
   # Beholder ejerlejligheder
   dplyr::filter(ejdtype == "Ejerlejlighed") %>%
+  dplyr::mutate(kommunenavn = ifelse(kommunenavn == "København",
+                                     "Copenhagen",
+                                     kommunenavn)) %>%
   # Sætter opbygningsaar til opfoerelsesaar hvis NA
   dplyr::mutate(ejd_ombygningsaar = ifelse(is.na(ejd_ombygningsaar), ejd_opfoerelsesaar,
                                            ejd_ombygningsaar)) %>%
@@ -42,7 +45,7 @@ homedata <- homedata %>%
   # Konverterer salgsåret til kun år for at gruppere senere
   dplyr::mutate(periode_salg = year(periode_salg)) %>%
   # Filtrerer for tre kommuner
-  dplyr::filter(kommunenavn == "Aalborg" | kommunenavn == "Aarhus" | kommunenavn == "København") %>%
+  dplyr::filter(kommunenavn == "Aalborg" | kommunenavn == "Aarhus" | kommunenavn == "Copenhagen") %>%
   # Vælger det år med flest observationer (2015)
   dplyr::filter(periode_salg == 2021) %>%
   # Fjerner yderligere søjler som ikke har betydning når hvor vores problmen er begrænset
