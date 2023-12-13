@@ -62,14 +62,23 @@ training_data <- lapply(training_data, function(df) {
   return(df)
 })
 # Sætter Aalborg bynavn der refferes til
-training_data[[1]]$bynavn <- as.factor(training_data[[1]]$bynavn)
+training_data[[1]]$bynavn <- factor(training_data[[1]]$bynavn,
+                                    levels = c("Aalborg Øst", "Aalborg", "Aalborg SØ",
+                                               "Nørresundby", "Storvorde", "Nibe", "Vadum"))
 training_data[[1]]$bynavn <- relevel(training_data[[1]]$bynavn, ref = "Aalborg")
 # Sætter Aarhus bynavn der refferes til
-training_data[[2]]$bynavn <- as.factor(training_data[[2]]$bynavn)
+training_data[[2]]$bynavn <- factor(training_data[[2]]$bynavn,
+                                    levels = c("Aarhus C", "Aarhus N", "Aarhus V", "Tilst",
+                                    "Risskov", "Højbjerg", "Åbyhøj", "Egå",
+                                    "Brabrand", "Lystrup", "Viby J", "Harlev J"))
 training_data[[2]]$bynavn <- relevel(training_data[[2]]$bynavn, ref = "Aarhus C")
 # Sætter Aarhus bynavn der refferes til
-training_data[[3]]$bynavn <- as.factor(training_data[[3]]$bynavn)
-training_data[[3]]$bynavn <- relevel(training_data[[3]]$bynavn, ref = "København Ø")
+training_data[[3]]$bynavn <- factor(training_data[[3]]$bynavn,
+                                       levels = c("København K", "Nordhavn", "København V", "København Ø",
+                                                  "København N", "Hellerup", "København SV", "København S",
+                                                  "Valby", "København NV", "Vanløse", "Brønshøj"))
+training_data[[3]]$bynavn <- relevel(training_data[[3]]$bynavn,
+                                      ref = "København Ø")
 
 
 # Bruger lm() til at lave en model som kigger på pris_salg og alle explanatory variables
@@ -200,6 +209,7 @@ ggcorrplot(round(cor(cbind(pris_salg = training_data[[2]]$pris_salg,
 ### KBH
 ggcorrplot(round(cor(cbind(pris_salg = training_data[[3]]$pris_salg,
                            beloeb_ejerudgift = training_data[[3]]$beloeb_ejerudgift,
+                           antalfremvisninger = training_data[[3]]$antalfremvisninger,
                            adresse_etage = training_data[[3]]$adresse_etage,
                            areal_bolig = training_data[[3]]$areal_bolig,
                            ejd_antalrum = training_data[[3]]$ejd_antalrum,
@@ -238,28 +248,6 @@ plot(training_data[[1]]$ejd_energimaerke,
 
 par(mfrow = c(1, 1))
 
-# training_data[[1]] <- training_data[[1]] %>%
-#   dplyr::filter(ejd_energimaerke != "F")
-# 
-# training_data[[1]]$ejd_energimaerke <- droplevels(training_data[[1]]$ejd_energimaerke)
-# 
-# par(mfrow = c(1, 2))
-# 
-# plot(training_data[[1]]$bynavn,
-#      training_data[[1]]$pris_salg / 1000000,
-#      main = "Price vs Town",
-#      ylab = "Price (in millions)",
-#      xlab = "",
-#      las = 2,
-#      cex.axis = 0.7)
-# 
-# plot(training_data[[1]]$ejd_energimaerke,
-#      training_data[[1]]$pris_salg / 1000000,
-#      main = "Price vs Energy Label",
-#      xlab = "Energy label",
-#      ylab = "Price (in millions)")
-# 
-# par(mfrow = c(1, 1))
 # AAR (bynavn, energimaerke, ejd_altan)
 # Fjerner ejd_altan
 par(mfrow = c(1, 3))
@@ -332,7 +320,7 @@ model_aar_2 <- lm(pris_salg ~ bynavn + areal_bolig + ejd_antalplan +
 # names(coef(model_aar_2))
 
 
-model_kbh_2 <- lm(pris_salg ~ bynavn + antalfremvisninger + adresse_etage +
+model_kbh_2 <- lm(pris_salg ~ bynavn + adresse_etage +
                     areal_bolig + ejd_energimaerke + ejd_opfoerelsesaar, data = training_data[[3]])
 # summary(model_kbh_2)
 # names(coef(model_kbh_2))
@@ -438,33 +426,124 @@ plot(model_kbh_3_2, main = "KBH", which = 2)
 par(mfrow = c(1, 1))
 
 
+# tjekker for perfect collinearty for alle søjler (både kategorisk og numerisk)
+ggcorrplot(round(cor(cbind(pris_salg = training_data_wo_outlier[[1]]$pris_salg,
+                           bynavn = training_data_wo_outlier[[1]]$bynavn,
+                           beloeb_ejerudgift = training_data_wo_outlier[[1]]$beloeb_ejerudgift,
+                           antalfremvisninger = training_data_wo_outlier[[1]]$antalfremvisninger,
+                           areal_bolig = training_data_wo_outlier[[1]]$areal_bolig,
+                           ejd_antalplan = training_data_wo_outlier[[1]]$ejd_antalplan,
+                           ejd_energimaerke = training_data_wo_outlier[[1]]$ejd_energimaerke,
+                           ejd_ombygningsaar = training_data_wo_outlier[[1]]$ejd_ombygningsaar,
+                           dist_skole = training_data_wo_outlier[[1]]$dist_skole,
+                           dist_raadhus = training_data_wo_outlier[[1]]$dist_raadhus)), 2),
+           hc.order = TRUE, type = "lower", lab = TRUE)
+
+ggcorrplot(round(cor(cbind(pris_salg = training_data_wo_outlier[[2]]$pris_salg,
+                           bynavn = training_data_wo_outlier[[2]]$bynavn,
+                           beloeb_ejerudgift = training_data_wo_outlier[[2]]$beloeb_ejerudgift,
+                           areal_bolig = training_data_wo_outlier[[2]]$areal_bolig,
+                           ejd_altan = training_data_wo_outlier[[2]]$ejd_altan,
+                           ejd_antalplan = training_data_wo_outlier[[2]]$ejd_antalplan,
+                           ejd_energimaerke = training_data_wo_outlier[[2]]$ejd_energimaerke,
+                           ejd_opfoerelsesaar = training_data_wo_outlier[[2]]$ejd_opfoerelsesaar,
+                           dist_skole = training_data_wo_outlier[[2]]$dist_skole,
+                           dist_raadhus = training_data_wo_outlier[[2]]$dist_raadhus)), 2),
+           hc.order = TRUE, type = "lower", lab = TRUE)
+
+ggcorrplot(round(cor(cbind(pris_salg = training_data_wo_outlier[[3]]$pris_salg,
+                           bynavn = training_data_wo_outlier[[3]]$bynavn,
+                           beloeb_ejerudgift = training_data_wo_outlier[[3]]$beloeb_ejerudgift,
+                           antalfremvisninger = training_data_wo_outlier[[3]]$antalfremvisninger,
+                           adresse_etage = training_data_wo_outlier[[3]]$adresse_etage,
+                           areal_bolig = training_data_wo_outlier[[3]]$areal_bolig,
+                           ejd_altan = training_data_wo_outlier[[3]]$ejd_altan,
+                           ejd_antalrum = training_data_wo_outlier[[3]]$ejd_antalrum,
+                           ejd_energimaerke = training_data_wo_outlier[[3]]$ejd_energimaerke,
+                           ejd_opfoerelsesaar = training_data_wo_outlier[[3]]$ejd_opfoerelsesaar,
+                           dist_raadhus = training_data_wo_outlier[[3]]$dist_raadhus)), 2),
+           hc.order = TRUE, type = "lower", lab = TRUE)
+
+############################## PREDICTION ON TEST_DATA ##############################
+# Prediction-interval
+pred_int_aal <- predict(model_aal_3_2, test_data[[1]], interval = "prediction")
+pred_int_aar <- predict(model_aar_3_2, test_data[[2]], interval = "prediction")
+pred_int_kbh <- predict(model_kbh_3_2, test_data[[3]], interval = "prediction")
+
+# Confidence-interval
+conf_int_aal <- predict(model_aal_3_2, test_data[[1]], interval = "confidence")
+conf_int_aar <- predict(model_aar_3_2, test_data[[2]], interval = "confidence")
+conf_int_kbh <- predict(model_kbh_3_2, test_data[[3]], interval = "confidence")
 
 
-# plot(training_data_wo_outlier[[1]]$beloeb_ejerudgift,
-#      training_data_wo_outlier[[1]]$pris_salg / 1000000,
-#      main = "Price vs Town",
-#      ylab = "Price (in millions)",
-#      xlab = "",
-#      las = 2,
-#      cex.axis = 0.7)
+plot(exp(predict_aal[, 1]), test_data[[1]]$pris_salg,
+     xlab = "Fitted values",ylab = "pris_salg")
+abline(0, 1, lwd = 2, col = "red")
+
+
+plot(exp(predict_aar[, 1]), test_data[[2]]$pris_salg,
+     xlab = "Fitted values",ylab = "pris_salg")
+abline(0, 1, lwd = 2, col = "red")
+
+
+plot(exp(predict_kbh[, 1]), test_data[[3]]$pris_salg,
+     xlab = "Fitted values",ylab = "pris_salg")
+abline(0, 1, lwd = 2, col = "red")
+
+# AAL
+ggplot(as.data.frame(pred_int_aal[, 1]), aes(x = 1:nrow(as.data.frame(pred_int_aal[, 1])),
+                                             y = exp(pred_int_aal[, 1]))) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "red", linetype = "solid") +
+  geom_ribbon(aes(ymin = exp(pred_int_aal[, 2]), ymax = exp(pred_int_aal[, 3])),
+              fill = "blue", alpha = 0.2) +
+  geom_ribbon(aes(ymin = exp(conf_int_aal[, 2]), ymax = exp(conf_int_aal[, 3])),
+              fill = "orange", alpha = 0.2) +
+  labs(ylab = "Kontantpris") +
+  theme_minimal()
+
+
+# KBH
+ggplot(as.data.frame(test_data[[1]]$pris_salg), aes(x = 1:nrow(as.data.frame(test_data[[1]])),
+                                             y = as.data.frame(test_data[[1]]$pris_salg))) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "red",
+              linetype = "solid") +
+  geom_ribbon(aes(ymin = exp(pred_int_kbh[, 2]), ymax = exp(pred_int_kbh[, 3])),
+              fill = "blue", alpha = 0.2) +
+  geom_ribbon(aes(ymin = exp(conf_int_kbh[, 2]), ymax = exp(conf_int_kbh[, 3])),
+              fill = "orange", alpha = 0.2) +
+  labs(ylab = "Kontantpris") +
+  theme_minimal()
+
+
+conf_int_kbh <- conf_int_kbh[order(conf_int_kbh[,1]),]
+test_data[[1]] <- test_data[[1]][order(pred_int_kbh[,1]),]
+pred_int_kbh <- pred_int_kbh[order(pred_int_kbh[,1]),]
+
+# KBH
+plot(test_data[[3]]$pris_salg, ylab = "pris_salg")
+lines(1:nrow(test_data[[3]]),
+      exp(pred_int_kbh[, 1]),
+      col = "red", lwd = 2)
+lines(1:nrow(test_data[[3]]),
+      exp(pred_int_kbh[, 2]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[3]]),
+      exp(pred_int_kbh[, 3]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[3]]),
+      exp(conf_int_kbh[, 2]),
+      col = "darkorange2", lwd = 2)
+lines(1:nrow(test_data[[3]]),
+      exp(conf_int_kbh[, 3]),
+      col = "darkorange2", lwd = 2)
 
 
 
 
-              ## QQ plots ##
-# par(mfrow = c(2, 3))
-# plot(model_aal_2, main = "AAL", which = 5)
-# plot(model_aar_2, main = "AAR", which = 1)
 
 
-# ggplot(data.frame(fitted_values = fitted(model_aal_2),
-#   standardized_residuals = residuals(model_aal_2) / sd(residuals(model_aal_2))), aes(x = fitted(model_aal_2), y = rstandard(model_aal_2))) +
-#   geom_point(color = "black", size = 2, shape = 1) +  # Adjust point color and size as needed
-#   geom_hline(yintercept = 0, linetype = "dotted", color = "azure3") +  # Dotted line at y = 0
-#   labs(title = "My Model", x = "Fitted Values", y = "Standardized Residuals") +
-#   ylim(-5, 5) +
-#   xlim(0, 6000000) +
-#   theme_minimal()
 
 
 
