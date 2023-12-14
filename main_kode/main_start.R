@@ -28,8 +28,10 @@ test_data <- homedata %>%
   dplyr::group_by(kommunenavn) %>%
   dplyr::sample_n(size = (n() / 10), replace = FALSE) %>%
   dplyr::group_split()
-# Fjerner kommunenavn søjlen for alle dataframes i listen
-test_data <- lapply(test_data, function(df) df[, !names(df) %in% "kommunenavn", drop = FALSE])
+# Fjerner søjler der ikke skal bruges
+test_data <- lapply(test_data, function(df) df[, !names(df) %in% c("kommunenavn", c("adresse_fuld",
+                                                                                    "gisy_wgs84", "gisx_wgs84", "salgsaar")),
+                                               drop = FALSE])
 
 
 # Fjerner test_data fra homedata og laver training_data 
@@ -37,7 +39,7 @@ training_data <- homedata %>%
   dplyr::anti_join(bind_rows(test_data)) %>%
   dplyr::group_by(kommunenavn) %>%
   dplyr::group_split()
-# Fjerner kommunenavn søjlen for alle dataframes i listen
+# Fjerner søjler der ikke skal bruges
 training_data <- lapply(training_data, function(df) df[, !names(df) %in% c("kommunenavn", c("adresse_fuld",
                                                                            "gisy_wgs84", "gisx_wgs84", "salgsaar")),
                                                        drop = FALSE])
@@ -465,6 +467,18 @@ ggcorrplot(round(cor(cbind(pris_salg = training_data_wo_outlier[[3]]$pris_salg,
            hc.order = TRUE, type = "lower", lab = TRUE)
 
 ############################## PREDICTION ON TEST_DATA ##############################
+# Fjerner søjler i test data som ikke er blevet brugt til at bygge modellen eller
+# som modellen ikke kan tage højde for
+test_data[[1]] <- test_data[[1]] %>% dplyr::select(-sag_annonceretnettet,
+                                                   -adresse_etage, -ejd_altan,
+                                                   -ejd_opfoerelsesaar)
+test_data[[2]] <- test_data[[2]] %>% dplyr::select(-antalfremvisninger,
+                                                   -sag_annonceretnettet, -adresse_etage,
+                                                   -ejd_antalrum, -ejd_ombygningsaar)
+test_data[[3]] <- test_data[[3]] %>% dplyr::select(-sag_annonceretnettet, -ejd_antalplan,
+                                                   -ejd_ombygningsaar, -dist_skole)
+
+
 # Prediction-interval
 pred_int_aal <- predict(model_aal_3_2, test_data[[1]], interval = "prediction")
 pred_int_aar <- predict(model_aar_3_2, test_data[[2]], interval = "prediction")
@@ -476,52 +490,127 @@ conf_int_aar <- predict(model_aar_3_2, test_data[[2]], interval = "confidence")
 conf_int_kbh <- predict(model_kbh_3_2, test_data[[3]], interval = "confidence")
 
 
-plot(exp(predict_aal[, 1]), test_data[[1]]$pris_salg,
+plot(exp(pred_int_aal[, 1]), test_data[[1]]$pris_salg,
      xlab = "Fitted values",ylab = "pris_salg")
 abline(0, 1, lwd = 2, col = "red")
 
-
-plot(exp(predict_aar[, 1]), test_data[[2]]$pris_salg,
+plot(exp(pred_int_aar[, 1]), test_data[[2]]$pris_salg,
      xlab = "Fitted values",ylab = "pris_salg")
 abline(0, 1, lwd = 2, col = "red")
 
-
-plot(exp(predict_kbh[, 1]), test_data[[3]]$pris_salg,
+plot(exp(pred_int_kbh[, 1]), test_data[[3]]$pris_salg,
      xlab = "Fitted values",ylab = "pris_salg")
 abline(0, 1, lwd = 2, col = "red")
+
+######################## MAN VS MACHINE ########################
+
+mvm_data <- get(load("~/Desktop/Projekt P5/stor_homedata.Rda")) %>%
+  {colnames(.) <- tolower(colnames(.)); .}
+load("~/Desktop/Projekt P5/stor_homedata.Rda")
+
+# Renser data
+source("renset_data.R")
+
+mvm_data <- mvm_data %>%
+  dplyr::right_join(homedata %>%
+                      dplyr::select(adresse_fuld, beloeb_ejerudgift, pris_salg),
+                    by = c("adresse_fuld", "beloeb_ejerudgift", "pris_salg")) %>%
+  dplyr::select(pris_salg, pris_ejdvurdering,
+                bynavn, areal_bolig,
+                beloeb_ejerudgift, ejd_energimaerke, kommunenavn) %>%
+  dplyr::mutate(ejd_energimaerke = ifelse(grepl("^A", ejd_energimaerke), "A", 
+                                          ifelse(ejd_energimaerke == "Unknown", NA, ejd_energimaerke))) %>%
+  dplyr::group_by(kommunenavn) %>%
+  dplyr::group_split()
+
+mvm_bind_1 <- bind_cols(test_data[[1]],
+                        predict(model_aal_3_2, test_data[[1]], interval = "prediction")[, 1]) %>%
+  dplyr::rename("fit" = "...12")
+mvm_bind_2 <- bind_cols(test_data[[2]],
+                        predict(model_aar_3_2, test_data[[2]], interval = "prediction")[, 1]) %>%
+  dplyr::rename("fit" = "...11")
+mvm_bind_3 <- bind_cols(test_data[[3]],
+                        predict(model_kbh_3_2, test_data[[3]], interval = "prediction")[, 1]) %>%
+  dplyr::rename("fit" = "...12")
+
+mvm_data_1 <- mvm_data[[1]] %>%
+  dplyr::right_join(mvm_bind_1,
+                   by = c("beloeb_ejerudgift", "pris_salg"))
+
+mvm_data_2 <- mvm_data[[2]] %>%
+  dplyr::right_join(mvm_bind_2,
+                    by = c("beloeb_ejerudgift", "pris_salg"))
+
+mvm_data_3 <- mvm_data[[3]] %>%
+  dplyr::right_join(mvm_bind_3,
+                    by = c("beloeb_ejerudgift", "pris_salg"))
+######################## MAN VS MACHINE ######################## SLUT
 
 # AAL
-ggplot(as.data.frame(pred_int_aal[, 1]), aes(x = 1:nrow(as.data.frame(pred_int_aal[, 1])),
-                                             y = exp(pred_int_aal[, 1]))) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "red", linetype = "solid") +
-  geom_ribbon(aes(ymin = exp(pred_int_aal[, 2]), ymax = exp(pred_int_aal[, 3])),
-              fill = "blue", alpha = 0.2) +
-  geom_ribbon(aes(ymin = exp(conf_int_aal[, 2]), ymax = exp(conf_int_aal[, 3])),
-              fill = "orange", alpha = 0.2) +
-  labs(ylab = "Kontantpris") +
-  theme_minimal()
+# Sætter rækkefølgen til plottet under
+conf_int_aal <- conf_int_aal[order(conf_int_aal[,1]),]
+test_data[[1]] <- test_data[[1]][order(pred_int_aal[,1]),]
+pred_int_aal <- pred_int_aal[order(pred_int_aal[,1]),]
+
+# Tjek procentdel i interval AAL
+sum(log(test_data[[1]]$pris_salg) >= pred_int_aal[, 2] &
+      log(test_data[[1]]$pris_salg) <= pred_int_aal[, 3]) / nrow(test_data[[1]])
+
+plot(test_data[[1]]$pris_salg, ylab = "pris_salg")
+lines(1:nrow(test_data[[1]]),
+      exp(pred_int_aal[, 1]),
+      col = "red", lwd = 2)
+lines(1:nrow(test_data[[1]]),
+      exp(pred_int_aal[, 2]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[1]]),
+      exp(pred_int_aal[, 3]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[1]]),
+      exp(conf_int_aal[, 2]),
+      col = "darkorange2", lwd = 2)
+lines(1:nrow(test_data[[1]]),
+      exp(conf_int_aal[, 3]),
+      col = "darkorange2", lwd = 2)
+
+# AAR
+# Sætter rækkefølgen til plottet under
+conf_int_aar <- conf_int_aar[order(conf_int_aar[,1]),]
+test_data[[2]] <- test_data[[2]][order(pred_int_aar[,1]),]
+pred_int_aar <- pred_int_aar[order(pred_int_aar[,1]),]
+
+# Tjek procentdel i interval AAR
+sum(log(test_data[[2]]$pris_salg) >= pred_int_aar[, 2] &
+      log(test_data[[2]]$pris_salg) <= pred_int_aar[, 3]) / nrow(test_data[[2]])
+
+plot(test_data[[2]]$pris_salg, ylab = "pris_salg")
+lines(1:nrow(test_data[[2]]),
+      exp(pred_int_aar[, 1]),
+      col = "red", lwd = 2)
+lines(1:nrow(test_data[[2]]),
+      exp(pred_int_aar[, 2]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[2]]),
+      exp(pred_int_aar[, 3]),
+      col = "dodgerblue3", lwd = 2)
+lines(1:nrow(test_data[[2]]),
+      exp(conf_int_aar[, 2]),
+      col = "darkorange2", lwd = 2)
+lines(1:nrow(test_data[[2]]),
+      exp(conf_int_aar[, 3]),
+      col = "darkorange2", lwd = 2)
 
 
 # KBH
-ggplot(as.data.frame(test_data[[1]]$pris_salg), aes(x = 1:nrow(as.data.frame(test_data[[1]])),
-                                             y = as.data.frame(test_data[[1]]$pris_salg))) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "red",
-              linetype = "solid") +
-  geom_ribbon(aes(ymin = exp(pred_int_kbh[, 2]), ymax = exp(pred_int_kbh[, 3])),
-              fill = "blue", alpha = 0.2) +
-  geom_ribbon(aes(ymin = exp(conf_int_kbh[, 2]), ymax = exp(conf_int_kbh[, 3])),
-              fill = "orange", alpha = 0.2) +
-  labs(ylab = "Kontantpris") +
-  theme_minimal()
-
-
+# Sætter rækkefølgen til plottet under
 conf_int_kbh <- conf_int_kbh[order(conf_int_kbh[,1]),]
-test_data[[1]] <- test_data[[1]][order(pred_int_kbh[,1]),]
+test_data[[3]] <- test_data[[3]][order(pred_int_kbh[,1]),]
 pred_int_kbh <- pred_int_kbh[order(pred_int_kbh[,1]),]
 
-# KBH
+# Tjek procentdel i interval KBH
+sum(log(test_data[[3]]$pris_salg) >= pred_int_kbh[, 2] &
+      log(test_data[[3]]$pris_salg) <= pred_int_kbh[, 3]) / nrow(test_data[[3]])
+
 plot(test_data[[3]]$pris_salg, ylab = "pris_salg")
 lines(1:nrow(test_data[[3]]),
       exp(pred_int_kbh[, 1]),
@@ -538,6 +627,20 @@ lines(1:nrow(test_data[[3]]),
 lines(1:nrow(test_data[[3]]),
       exp(conf_int_kbh[, 3]),
       col = "darkorange2", lwd = 2)
+
+
+##### LAVER PLOTS TIL MVM #####
+
+plot(exp(pred_int_kbh[, 1]), test_data[[3]]$pris_salg,
+     xlab = "Fitted values",ylab = "pris_salg")
+abline(0, 1, lwd = 2, col = "red")
+
+
+plot(exp(mvm_data_1$fit), mvm_data_1$pris_salg, xlab = "Fitted values", ylab = "pris_salg")
+abline(0, 1, lwd = 2, col = "red")
+# Add points for the fitted values
+points(exp(mvm_data_1$fit), mvm_data_1$pris_ejdvurdering, col = "blue", pch = 16)
+
 
 
 
