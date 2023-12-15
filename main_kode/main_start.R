@@ -628,24 +628,45 @@ lines(1:nrow(test_data[[3]]),
       exp(conf_int_kbh[, 3]),
       col = "darkorange2", lwd = 2)
 
-
-##### LAVER PLOTS TIL MVM #####
-
 plot(exp(pred_int_kbh[, 1]), test_data[[3]]$pris_salg,
      xlab = "Fitted values",ylab = "pris_salg")
 abline(0, 1, lwd = 2, col = "red")
 
 
-plot(exp(mvm_data_1$fit), mvm_data_1$pris_salg, xlab = "Fitted values", ylab = "pris_salg")
+##### LAVER PLOTS TIL MVM #####
+
+par(mfrow = c(1, 3))
+# AAL
+plot(exp(mvm_data_1$fit), mvm_data_1$pris_salg, xlab = "Fitted values", ylab = "pris_salg",
+     main = "AAL")
 abline(0, 1, lwd = 2, col = "red")
 # Add points for the fitted values
 points(exp(mvm_data_1$fit), mvm_data_1$pris_ejdvurdering, col = "blue", pch = 16)
 
+# AAR
+plot(exp(mvm_data_2$fit), mvm_data_2$pris_salg, xlab = "Fitted values", ylab = "pris_salg",
+     ylim = c(0, 5500000), main = "AAR")
+abline(0, 1, lwd = 2, col = "red")
+# Add points for the fitted values
+points(exp(mvm_data_2$fit), mvm_data_2$pris_ejdvurdering, col = "blue", pch = 16)
 
+# KBH
+plot(exp(mvm_data_3$fit), mvm_data_3$pris_salg, xlab = "Fitted values", ylab = "pris_salg",
+     ylim = c(0, 10000000), main = "KBH")
+abline(0, 1, lwd = 2, col = "red")
+# Add points for the fitted values
+points(exp(mvm_data_3$fit), mvm_data_3$pris_ejdvurdering, col = "blue", pch = 16)
 
+par(mfrow = c(1, 1))
 
+sum((mvm_data_1$pris_salg - exp(mvm_data_1$fit))^2)
+sum((mvm_data_1$pris_salg - mvm_data_1$pris_ejdvurdering)^2)
 
+sum((mvm_data_2$pris_salg - exp(mvm_data_2$fit))^2)
+sum((mvm_data_2$pris_salg - mvm_data_2$pris_ejdvurdering)^2)
 
+sum((mvm_data_3$pris_salg - exp(mvm_data_3$fit))^2)
+sum((mvm_data_3$pris_salg - mvm_data_3$pris_ejdvurdering)^2)
 
 
 
