@@ -13,7 +13,7 @@ library(ggcorrplot)
 library(MASS)
 library(stringr)
 library(car)
-
+library(olsrr)
 # Definere generelle variable
 set.seed(69)
 
@@ -372,23 +372,39 @@ model_kbh_3_1 <- lm(pris_salg ~ bynavn + beloeb_ejerudgift + antalfremvisninger 
 # summary(model_kbh_3_1)
 
 ## LOG-TRANSFORM AF MODEL 3##
-model_aal_3_2 <- lm(log(pris_salg) ~ bynavn + beloeb_ejerudgift + antalfremvisninger + areal_bolig +
+model_aal_3_2 <- lm(log(pris_salg) ~ bynavn + beloeb_ejerudgift + antalfremvisninger + log(areal_bolig) +
                       ejd_antalplan + ejd_energimaerke + ejd_ombygningsaar +
                       dist_skole + dist_raadhus,
                     data = training_data_wo_outlier[[1]])
 # summary(model_aal_3_2)
 
-model_aar_3_2 <- lm(log(pris_salg) ~ bynavn + beloeb_ejerudgift + areal_bolig + ejd_altan +
+model_aar_3_2 <- lm(log(pris_salg) ~ bynavn + beloeb_ejerudgift + log(areal_bolig) + ejd_altan +
                       ejd_antalplan + ejd_energimaerke + ejd_opfoerelsesaar +
                       dist_skole + dist_raadhus,
                     data = training_data_wo_outlier[[2]])
 # summary(model_aar_3_2)
 
 model_kbh_3_2 <- lm(log(pris_salg) ~ bynavn + beloeb_ejerudgift + antalfremvisninger +
-                      adresse_etage + areal_bolig + ejd_altan + ejd_antalrum +
+                      adresse_etage + log(areal_bolig) + ejd_altan + ejd_antalrum +
                       ejd_energimaerke + ejd_opfoerelsesaar + dist_raadhus,
                     data = training_data_wo_outlier[[3]])
 # summary(model_kbh_3_2)
+
+
+# Cooks distance MED outliers
+par(mfrow = c(1, 3))
+plot(model_aal_1s, main = "AAL", which = 4)
+plot(model_aar_1s, main = "AAR", which = 4)
+plot(model_kbh_1s, main = "KBH", which = 4)
+par(mfrow = c(1, 1))
+
+# Cooks distance UDEN outliers
+par(mfrow = c(1, 3))
+plot(model_aal_3_1, main = "AAL", which = 4)
+plot(model_aar_3_1, main = "AAR", which = 4)
+plot(model_kbh_3_1, main = "KBH", which = 4)
+par(mfrow = c(1, 1))
+
 
 # res/fitted normal 1s
 par(mfrow = c(1, 3))
@@ -426,6 +442,23 @@ plot(model_aal_3_2, main = "AAL", which = 2)
 plot(model_aar_3_2, main = "AAR", which = 2)
 plot(model_kbh_3_2, main = "KBH", which = 2)
 par(mfrow = c(1, 1))
+
+# Scale-location UDEN outliers
+par(mfrow = c(1, 3))
+plot(model_aal_3_1, main = "AAL", which = 3)
+plot(model_aar_3_1, main = "AAR", which = 3)
+plot(model_kbh_3_1, main = "KBH", which = 3)
+par(mfrow = c(1, 1))
+
+# Scale-location outliers OG efter LOG
+par(mfrow = c(1, 3))
+plot(model_aal_3_2, main = "AAL", which = 3)
+plot(model_aar_3_2, main = "AAR", which = 3)
+plot(model_kbh_3_2, main = "KBH", which = 3)
+par(mfrow = c(1, 1))
+
+
+
 
 
 # tjekker for perfect collinearty for alle søjler (både kategorisk og numerisk)
@@ -515,7 +548,7 @@ mvm_data <- mvm_data %>%
   dplyr::right_join(homedata %>%
                       dplyr::select(adresse_fuld, beloeb_ejerudgift, pris_salg),
                     by = c("adresse_fuld", "beloeb_ejerudgift", "pris_salg")) %>%
-  dplyr::select(pris_salg, pris_ejdvurdering,
+  dplyr::select(pris_salg, pris_foersteudbud,
                 bynavn, areal_bolig,
                 beloeb_ejerudgift, ejd_energimaerke, kommunenavn) %>%
   dplyr::mutate(ejd_energimaerke = ifelse(grepl("^A", ejd_energimaerke), "A", 
@@ -535,15 +568,18 @@ mvm_bind_3 <- bind_cols(test_data[[3]],
 
 mvm_data_1 <- mvm_data[[1]] %>%
   dplyr::right_join(mvm_bind_1,
-                   by = c("beloeb_ejerudgift", "pris_salg"))
+                   by = c("beloeb_ejerudgift", "pris_salg")) %>%
+  na.omit()
 
 mvm_data_2 <- mvm_data[[2]] %>%
   dplyr::right_join(mvm_bind_2,
-                    by = c("beloeb_ejerudgift", "pris_salg"))
+                    by = c("beloeb_ejerudgift", "pris_salg")) %>%
+  na.omit()
 
 mvm_data_3 <- mvm_data[[3]] %>%
   dplyr::right_join(mvm_bind_3,
-                    by = c("beloeb_ejerudgift", "pris_salg"))
+                    by = c("beloeb_ejerudgift", "pris_salg")) %>%
+  na.omit()
 ######################## MAN VS MACHINE ######################## SLUT
 
 # AAL
@@ -628,10 +664,6 @@ lines(1:nrow(test_data[[3]]),
       exp(conf_int_kbh[, 3]),
       col = "darkorange2", lwd = 2)
 
-plot(exp(pred_int_kbh[, 1]), test_data[[3]]$pris_salg,
-     xlab = "Fitted values",ylab = "pris_salg")
-abline(0, 1, lwd = 2, col = "red")
-
 
 ##### LAVER PLOTS TIL MVM #####
 
@@ -641,32 +673,32 @@ plot(exp(mvm_data_1$fit), mvm_data_1$pris_salg, xlab = "Fitted values", ylab = "
      main = "AAL")
 abline(0, 1, lwd = 2, col = "red")
 # Add points for the fitted values
-points(exp(mvm_data_1$fit), mvm_data_1$pris_ejdvurdering, col = "blue", pch = 16)
+points(exp(mvm_data_1$fit), mvm_data_1$pris_foersteudbud, col = "blue", pch = 16)
 
 # AAR
 plot(exp(mvm_data_2$fit), mvm_data_2$pris_salg, xlab = "Fitted values", ylab = "pris_salg",
      ylim = c(0, 5500000), main = "AAR")
 abline(0, 1, lwd = 2, col = "red")
 # Add points for the fitted values
-points(exp(mvm_data_2$fit), mvm_data_2$pris_ejdvurdering, col = "blue", pch = 16)
+points(exp(mvm_data_2$fit), mvm_data_2$pris_foersteudbud, col = "blue", pch = 16)
 
 # KBH
 plot(exp(mvm_data_3$fit), mvm_data_3$pris_salg, xlab = "Fitted values", ylab = "pris_salg",
      ylim = c(0, 10000000), main = "KBH")
 abline(0, 1, lwd = 2, col = "red")
 # Add points for the fitted values
-points(exp(mvm_data_3$fit), mvm_data_3$pris_ejdvurdering, col = "blue", pch = 16)
+points(exp(mvm_data_3$fit), mvm_data_3$pris_foersteudbud, col = "blue", pch = 16)
 
 par(mfrow = c(1, 1))
 
 sum((mvm_data_1$pris_salg - exp(mvm_data_1$fit))^2)
-sum((mvm_data_1$pris_salg - mvm_data_1$pris_ejdvurdering)^2)
+sum((mvm_data_1$pris_salg - mvm_data_1$pris_foersteudbud)^2)
 
 sum((mvm_data_2$pris_salg - exp(mvm_data_2$fit))^2)
-sum((mvm_data_2$pris_salg - mvm_data_2$pris_ejdvurdering)^2)
+sum((mvm_data_2$pris_salg - mvm_data_2$pris_foersteudbud)^2)
 
 sum((mvm_data_3$pris_salg - exp(mvm_data_3$fit))^2)
-sum((mvm_data_3$pris_salg - mvm_data_3$pris_ejdvurdering)^2)
+sum((mvm_data_3$pris_salg - mvm_data_3$pris_foersteudbud)^2)
 
 
 
