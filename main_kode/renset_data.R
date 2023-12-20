@@ -13,6 +13,7 @@ homedata <- homedata %>%
                 -beloeb_mdnetto, -beloeb_mdbrutto, -pris_aktueludbud, -antalstatusmoedersaelger,
                 -afstemningsomraade, -pris_ejdvurdering, -salgsmaaned, -areal_kaelder, -salgstid,
                 -areal_grund, -storgrund, -hoejhus, -areal_garagecarport, -alder) %>%
+
   # Beholder ejerlejligheder
   dplyr::filter(ejdtype == "Ejerlejlighed") %>%
   dplyr::mutate(kommunenavn = ifelse(kommunenavn == "København",
@@ -57,5 +58,4 @@ homedata <- homedata %>%
 
 
 ## NOTER ########
-
 

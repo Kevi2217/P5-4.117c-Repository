@@ -14,6 +14,7 @@ library(MASS)
 library(stringr)
 library(car)
 library(olsrr)
+
 # Definere generelle variable
 set.seed(69)
 
@@ -39,10 +40,12 @@ training_data <- homedata %>%
   dplyr::anti_join(bind_rows(test_data)) %>%
   dplyr::group_by(kommunenavn) %>%
   dplyr::group_split()
+
 # Fjerner søjler der ikke skal bruges
 training_data <- lapply(training_data, function(df) df[, !names(df) %in% c("kommunenavn", c("adresse_fuld",
                                                                            "gisy_wgs84", "gisx_wgs84", "salgsaar")),
                                                        drop = FALSE])
+
 
 ######################################### ALT ANALYSE HERUNDER ###########################################
 # test data og training_data er inddelt i en liste med længde 3.
@@ -55,14 +58,22 @@ training_data <- lapply(training_data, function(df) {
   # ejd_altan
   df$ejd_altan <- as.factor(df$ejd_altan)
   df$ejd_altan <- relevel(df$ejd_altan, ref = "Ja")
+  # salgsmaaned
+  df$salgsmaaned <- as.factor(df$salgsmaaned)
+  df$salgsmaaned <- relevel(df$salgsmaaned, ref = "Januar")
   # energimaerke
   df$ejd_energimaerke <- as.factor(df$ejd_energimaerke)
   df$ejd_energimaerke <- relevel(df$ejd_energimaerke, ref = "A")
+  # adresse_etage
+  df$adresse_etage <- as.factor(df$adresse_etage)
+  df$adresse_etage <- relevel(df$adresse_etage, ref = "0")
+
   # sag_annonceretnettet
   df$sag_annonceretnettet <- as.factor(df$sag_annonceretnettet)
   df$sag_annonceretnettet <- relevel(df$sag_annonceretnettet, ref = "Ja")
   return(df)
 })
+
 # Sætter Aalborg bynavn der refferes til
 training_data[[1]]$bynavn <- factor(training_data[[1]]$bynavn,
                                     levels = c("Aalborg Øst", "Aalborg", "Aalborg SØ",
@@ -109,6 +120,7 @@ model_aar_1s <- stepAIC(model_aar_1,
                         trace = FALSE)
 # summary(model_aar_1s)
 names(coef(model_aar_1s))
+
 
 model_kbh_1s <- stepAIC(model_kbh_1,
                         direction = "backward", # Backward selection
@@ -699,10 +711,6 @@ sum((mvm_data_2$pris_salg - mvm_data_2$pris_foersteudbud)^2)
 
 sum((mvm_data_3$pris_salg - exp(mvm_data_3$fit))^2)
 sum((mvm_data_3$pris_salg - mvm_data_3$pris_foersteudbud)^2)
-
-
-
-
 
 
 
